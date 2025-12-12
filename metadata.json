@@ -1,0 +1,5 @@
+{
+  "name": "StudyMate AI",
+  "description": "An intelligent study assistant that summarizes PDF, documents, and images, and generates interactive quizzes to test your knowledge using Gemini 2.5.",
+  "requestFramePermissions": []
+}
