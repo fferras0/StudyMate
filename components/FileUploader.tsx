@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Upload, FileText, Image as ImageIcon, AlertCircle, FilePlus } from 'lucide-react';
+import { Upload, FileText, Image as ImageIcon, AlertCircle, FilePlus, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { FileData } from '../types';
 
 interface FileUploaderProps {
@@ -10,12 +10,24 @@ interface FileUploaderProps {
 const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isRTL = false }) => {
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [url, setUrl] = useState('');
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
 
   const processFile = (file: File) => {
     setError(null);
 
     const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
+    // Determine type by mime type or extension if mime is generic
+    let isValid = validTypes.includes(file.type);
+    
+    if (!isValid) {
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (ext && ['pdf', 'png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+            isValid = true;
+        }
+    }
+
+    if (!isValid) {
       setError(isRTL ? "يرجى رفع ملف PDF أو صورة (PNG, JPG)." : "Please upload a PDF or an Image file.");
       return;
     }
@@ -29,7 +41,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isRTL = false
     reader.onloadend = () => {
       onFileSelect({
         base64: reader.result as string,
-        mimeType: file.type,
+        mimeType: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
         name: file.name,
       });
     };
@@ -61,6 +73,55 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isRTL = false
     if (e.target.files && e.target.files[0]) {
       processFile(e.target.files[0]);
     }
+  };
+
+  const handleUrlUpload = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!url) return;
+      
+      setError(null);
+      setIsLoadingUrl(true);
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to fetch file.");
+        
+        const contentType = response.headers.get('content-type');
+        const blob = await response.blob();
+        
+        if (blob.size > 10 * 1024 * 1024) {
+             throw new Error(isRTL ? "حجم الملف كبير جداً. الحد الأقصى 10 ميجابايت." : "File size is too large. Max 10MB.");
+        }
+
+        // Guess filename and type
+        const urlObj = new URL(url);
+        const fileName = urlObj.pathname.split('/').pop() || 'downloaded-file';
+        
+        // Force type if blob type is generic but we know better from extension or context
+        let type = blob.type;
+        if (!type || type === 'application/octet-stream') {
+             if (fileName.toLowerCase().endsWith('.pdf')) type = 'application/pdf';
+             else if (fileName.toLowerCase().match(/\.(jpg|jpeg)$/)) type = 'image/jpeg';
+             else if (fileName.toLowerCase().endsWith('.png')) type = 'image/png';
+        }
+
+        const file = new File([blob], fileName, { type: type });
+        processFile(file);
+        setUrl('');
+        
+      } catch (err: any) {
+          console.error(err);
+          // Handle CORS specific error message if possible
+          if (err.message === "Failed to fetch" || err.name === 'TypeError') {
+              setError(isRTL 
+                  ? "تعذر الوصول للرابط. قد يكون بسبب سياسات الأمان (CORS) للموقع المستهدف." 
+                  : "Could not fetch URL. This is likely due to CORS restrictions on the target website.");
+          } else {
+              setError(err.message || (isRTL ? "حدث خطأ أثناء تحميل الملف." : "Error downloading file."));
+          }
+      } finally {
+          setIsLoadingUrl(false);
+      }
   };
 
   return (
@@ -113,10 +174,40 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, isRTL = false
           </div>
         )}
       </div>
+
+      {/* URL Input Section */}
+      <form onSubmit={handleUrlUpload} className="mt-8 w-full max-w-lg mx-auto animate-in fade-in slide-in-from-bottom-2">
+            <div className="relative flex items-center mb-6">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase tracking-widest">{isRTL ? 'أو عبر رابط' : 'OR VIA URL'}</span>
+                <div className="flex-grow border-t border-slate-200"></div>
+            </div>
+
+            <div className="flex gap-3 shadow-lg rounded-xl p-1 bg-white border border-slate-100">
+                <div className="relative flex-grow">
+                    <LinkIcon className={`absolute top-3.5 text-slate-400 ${isRTL ? 'right-4' : 'left-4'}`} size={20} />
+                    <input 
+                        type="url" 
+                        placeholder={isRTL ? "https://example.com/file.pdf" : "https://example.com/file.pdf"}
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        className={`w-full bg-white rounded-xl py-3 text-slate-800 font-medium focus:outline-none ${isRTL ? 'pr-12' : 'pl-12'}`}
+                        disabled={isLoadingUrl}
+                    />
+                </div>
+                <button 
+                    type="submit" 
+                    disabled={!url || isLoadingUrl}
+                    className="bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg px-6 font-bold flex items-center justify-center transition-all"
+                >
+                    {isLoadingUrl ? <Loader2 className="animate-spin" size={20} /> : (isRTL ? "استيراد" : "Import")}
+                </button>
+            </div>
+      </form>
       
       {error && (
-        <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center text-sm font-semibold border border-red-100 animate-in fade-in slide-in-from-top-2">
-          <AlertCircle size={18} className="mr-2" />
+        <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center text-sm font-semibold border border-red-100 animate-in fade-in slide-in-from-top-2 text-center">
+          <AlertCircle size={18} className="mr-2 flex-shrink-0" />
           {error}
         </div>
       )}
