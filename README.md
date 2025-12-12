@@ -1,20 +1,22 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# StudyMate AI
 
-# Run and deploy your AI Studio app
+An intelligent study assistant that summarizes PDF, documents, and images, and generates interactive quizzes to test your knowledge using Gemini 2.5.
 
-This contains everything you need to run your app locally.
+## Setup
 
-View your app in AI Studio: https://ai.studio/apps/drive/1PxKvShfe4AF6k7QdsgIwM9-Fdf5NwFIR
+1.  Clone the repository.
+2.  Run `npm install` to install dependencies.
+3.  Create a `.env` file in the root directory and add your API key:
+    ```
+    API_KEY=your_google_genai_api_key
+    ```
+4.  Run `npm run dev` to start the development server.
 
-## Run Locally
+## Features
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+-   **File Analysis**: Upload PDFs or Images.
+-   **Summarization**: Get structured summaries in English or Arabic.
+-   **Quiz Generation**: Auto-generate multiple-choice quizzes with explanations.
+-   **Smart Editor**: Edit the extracted text before processing.
+-   **History**: Save your summaries and quizzes locally.
+-   **Dark Mode**: Fully supported dark theme.
